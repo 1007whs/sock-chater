@@ -315,7 +315,7 @@ private:
     bool is_connected; // 成员变量
     int buffer_size;
 
-protected:
+public:
     // 日志输出
     void log_info(const std::string &msg)
     {
@@ -331,7 +331,13 @@ protected:
         ConsoleColor::set(ConsoleColor::WHITE);
     }
 
-public:
+    void log_debug(const std::string &msg)
+    {
+        ConsoleColor::set(ConsoleColor::GRAY);
+        std::cout << "[CLIENT DEBUG] " << msg << std::endl;
+        ConsoleColor::set(ConsoleColor::WHITE);
+    }
+
     // 构造函数
     TCPClient(std::string ip, int port, int buffer_size = DEFAULT_BUFFER_SIZE)
         : server_ip(ip), server_port(port), client_socket(INVALID_SOCKET), is_connected(false), buffer_size(buffer_size) {}

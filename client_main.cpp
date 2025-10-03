@@ -53,11 +53,13 @@ bool connectWithNickname(const std::string &nickname)
 {
     if (!client->connect())
     {
+        client->log_error("连接服务器失败");
         return false;
     }
 
     if (!client->send_data("NICKNAME " + nickname))
     {
+        client->log_error("发送昵称失败");
         client->disconnect();
         return false;
     }
@@ -68,7 +70,12 @@ bool connectWithNickname(const std::string &nickname)
 // 发送消息
 bool sendMessage(const std::string &message)
 {
-    return client->send_data(message);
+    if (!client->send_data(message))
+    {
+        client->log_error("发送消息失败");
+        return false;
+    }
+    return true;
 }
 
 int main()
@@ -101,6 +108,8 @@ int main()
         return 1;
     }
 
+    client->log_info("成功连接到服务器");
+
     // 启动接收消息
     startReceiving();
 
@@ -127,6 +136,7 @@ int main()
 
     stopReceiving();
     client->disconnect();
+    client->log_info("已断开与服务器的连接");
     delete client;
     std::cout << "已退出聊天" << std::endl;
     return 0;
