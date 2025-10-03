@@ -1,26 +1,74 @@
 #include "sock.hpp"
 #include <thread>
 
+// 全局变量
+TCPClient *client = nullptr;
+std::thread receiver_thread;
+bool receiving = false;
+
 // 接收消息线程函数
-void receive_messages(TCPClient &client)
+void receiveMessages()
 {
     std::string msg;
-    while (client.isConnected())
+    while (receiving && client->isConnected())
     {
-        if (client.receive_data(msg))
+        if (client->receive_data(msg))
         {
             ConsoleColor::set(ConsoleColor::YELLOW);
             std::cout << "\n"
                       << msg << std::endl;
             ConsoleColor::set(ConsoleColor::WHITE);
             std::cout << "请输入消息 (输入exit退出): ";
-            std::cout.flush(); // 确保提示显示
+            std::cout.flush();
         }
         else
         {
             break;
         }
     }
+}
+
+// 启动接收消息
+void startReceiving()
+{
+    if (!client->isConnected())
+        return;
+
+    receiving = true;
+    receiver_thread = std::thread(receiveMessages);
+}
+
+// 停止接收消息
+void stopReceiving()
+{
+    receiving = false;
+    if (receiver_thread.joinable())
+    {
+        receiver_thread.join();
+    }
+}
+
+// 连接到服务器并设置昵称
+bool connectWithNickname(const std::string &nickname)
+{
+    if (!client->connect())
+    {
+        return false;
+    }
+
+    if (!client->send_data("NICKNAME " + nickname))
+    {
+        client->disconnect();
+        return false;
+    }
+
+    return true;
+}
+
+// 发送消息
+bool sendMessage(const std::string &message)
+{
+    return client->send_data(message);
 }
 
 int main()
@@ -43,40 +91,32 @@ int main()
     std::cout << "请输入你的昵称: ";
     std::getline(std::cin, nickname);
 
-    // 创建并连接客户端
-    TCPClient client(server_ip, port);
-    if (!client.connect())
+    // 创建客户端
+    client = new TCPClient(server_ip, port);
+
+    if (!connectWithNickname(nickname))
     {
         std::cerr << "连接服务器失败" << std::endl;
+        delete client;
         return 1;
     }
 
-    // 发送昵称
-    if (!client.send_data("NICKNAME " + nickname))
-    {
-        std::cerr << "昵称发送失败，退出程序" << std::endl;
-        client.disconnect();
-        return 1;
-    }
-
-    // 启动接收消息线程
-    std::thread receiver(receive_messages, std::ref(client));
-    receiver.detach(); // 分离线程
+    // 启动接收消息
+    startReceiving();
 
     // 主线程处理输入
     std::string input;
-    std::cout << "连接成功！请输入消息 (输入exit退出): ";
-    while (client.isConnected())
+    std::cout << "连接成功！";
+    while (client->isConnected())
     {
         std::getline(std::cin, input);
 
-        if (client.send_data(input))
+        if (sendMessage(input))
         {
             if (input == "exit")
             {
                 break;
             }
-            // 每次发送消息后重新显示提示
             std::cout << "请输入消息 (输入exit退出): ";
         }
         else
@@ -85,7 +125,9 @@ int main()
         }
     }
 
-    client.disconnect();
+    stopReceiving();
+    client->disconnect();
+    delete client;
     std::cout << "已退出聊天" << std::endl;
     return 0;
 }
