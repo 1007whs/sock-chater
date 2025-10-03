@@ -52,7 +52,6 @@ int main()
     }
 
     // 发送昵称
-    client.send_data("NICKNAME " + nickname);
     if (!client.send_data("NICKNAME " + nickname))
     {
         std::cerr << "昵称发送失败，退出程序" << std::endl;
@@ -77,6 +76,8 @@ int main()
             {
                 break;
             }
+            // 每次发送消息后重新显示提示
+            std::cout << "请输入消息 (输入exit退出): ";
         }
         else
         {
